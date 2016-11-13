@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * A struct that we return from Rust to Java.
- * 
+ *
  * This is the Java representation of the Greeting struct in Rust.
  */
 public class Greeting extends Structure {
@@ -34,7 +34,7 @@ public class Greeting extends Structure {
     }
 
     public String text;
-    
+
     public String getText() {
         return text;
     }

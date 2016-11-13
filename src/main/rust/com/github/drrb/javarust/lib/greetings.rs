@@ -20,16 +20,12 @@
 
 use std::ffi::{CStr,CString};
 use std::str;
-use std::mem;
 
 // Normally we'd get these from libc, but that's unstable in 1.0 Beta
 mod mylibc {
     #[allow(non_camel_case_types)]
-    pub type c_int = i32;
-    #[allow(non_camel_case_types)]
     pub type c_char = i8;
 }
-use mylibc::c_int;
 use mylibc::c_char;
 
 // GreetingSet corresponds to com.github.drrb.javarust.GreetingSet in Java. It is marked with
@@ -37,16 +33,14 @@ use mylibc::c_char;
 // in memory in a way JNA can read them.
 #[repr(C)]
 pub struct GreetingSet {
-    // A pointer to an array of Greetings. This is converted to a Greeting.ByReference by JNA.
-    greetings: Box<[Greeting]>,
-    // The size of the array. We need to pass it back to Java so that we know how long the array
-    // is (JNA can't guess the size). We need to do this with all arrays created in Java and read
-    // in Rust (or vise-versa). This c_int is converted to a Java int by JNA.
-    number_of_greetings: c_int
+    // A pointer to an array of Greetings. This is converted to a Greeting.ByReference and and
+    // int by JNA, as a boxed slice holds two values - one for the array and one for its length.
+    greetings: Box<[Greeting]>
 }
 
+
 // Greeting corresponds to com.github.drrb.javarust.Greeting in Java. It is marked with
-// allow(missing_copy_implementations) to suppress compiler warnings encouraging us to 
+// allow(missing_copy_implementations) to suppress compiler warnings encouraging us to
 // implement the Copy trait.
 #[repr(C)]
 #[allow(missing_copy_implementations)]
@@ -59,7 +53,8 @@ pub struct Greeting {
 impl Greeting {
     // A constructor, for convenience
     fn new(string: &str) -> Greeting {
-        Greeting { text: to_ptr(string.to_string()) }
+        let text = to_ptr(string.to_string());
+        Greeting { text: text }
     }
 }
 
@@ -77,7 +72,7 @@ pub struct Person {
 /// to use camelCase to match the name of the function in Java.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern fn printGreeting(name: *const c_char) {
+pub extern fn printGreeting(name: *mut c_char) {
     // Convert the C string to a Rust one
     let name = to_string(name);
     println!("Hello from Rust, {}", name);
@@ -146,13 +141,10 @@ pub extern fn callMeBack(callback: extern "stdcall" fn(*const c_char)) {
 #[allow(non_snake_case)]
 pub extern fn sendGreetings(callback: extern "C" fn(Box<GreetingSet>)) {
     let greetings = vec![ Greeting::new("Hello!"), Greeting::new("Hello again!") ];
-    let num_greetings = greetings.len();
 
     let set = Box::new(GreetingSet {
         // Get a pointer to the vector as an array, so that we can pass it back to Java
-        greetings: greetings.into_boxed_slice(),
-        // Also return the length of the array, so that we can create the array back in Java
-        number_of_greetings: num_greetings as c_int
+        greetings: greetings.into_boxed_slice()
     });
     callback(set);
 }
@@ -162,18 +154,16 @@ pub extern fn sendGreetings(callback: extern "C" fn(Box<GreetingSet>)) {
 #[allow(non_snake_case)]
 pub extern fn renderGreetings() -> Box<GreetingSet> {
     let greetings = vec![ Greeting::new("Hello!"), Greeting::new("Hello again!") ];
-    let num_greetings = greetings.len();
 
     Box::new(GreetingSet {
-        greetings: greetings.into_boxed_slice(),
-        number_of_greetings: num_greetings as c_int
+        greetings: greetings.into_boxed_slice()
     })
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern fn dropGreeting(_: Box<Greeting>) {
-    // Do nothing here. Because we own the Greeting here (we're using a Box) and we're not
+    // Do nothing here. Because we own the GreetingSet here (we're using a Box) and we're not
     // returning it, Rust will assume we don't want it anymore and clean it up.
 }
 
@@ -186,16 +176,11 @@ pub extern fn dropGreetingSet(_: Box<GreetingSet>) {
 
 /// Convert a native string to a Rust string
 fn to_string(pointer: *const c_char) -> String {
-    let slice = unsafe { CStr::from_ptr(pointer).to_bytes() };
-    str::from_utf8(slice).unwrap().to_string()
+    unsafe { CStr::from_ptr(pointer).to_str().unwrap().to_string() }
 }
 
 /// Convert a Rust string to a native string
 fn to_ptr(string: String) -> *const c_char {
-    let cs = CString::new(string.as_bytes()).unwrap();
-    let ptr = cs.as_ptr();
-    // Tell Rust not to clean up the string while we still have a pointer to it.
-    // Otherwise, we'll get a segfault.
-    mem::forget(cs);
-    ptr
+    let pointer = CString::new(string).unwrap().into_raw();
+    pointer
 }

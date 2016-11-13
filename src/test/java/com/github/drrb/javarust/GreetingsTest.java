@@ -27,6 +27,8 @@ import static org.junit.Assert.assertThat;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
 
 public class GreetingsTest {
 
@@ -89,33 +91,33 @@ public class GreetingsTest {
 
     @Test
     public void shouldGetListOfStringsFromRustInACallback() {
-        final List<Greeting> greetings = new LinkedList<>();
+        final List<String> greetingStrings = new LinkedList<>();
         library.sendGreetings(new GreetingSetCallback() {
             public void apply(GreetingSet.ByReference greetingSet) {
-                greetings.addAll(greetingSet.getGreetings());
+              for (Greeting greeting: greetingSet.getGreetings()) {
+                  greetingStrings.add(greeting.getText());
+              }
+
+              greetingSet.setAutoSynch(false);
+              library.dropGreetingSet(greetingSet);
             }
         });
 
-        List<String> greetingStrings = new LinkedList<>();
-        for (Greeting greeting: greetings) {
-            greetingStrings.add(greeting.getText());
-        }
-
         assertThat(greetingStrings, is(asList("Hello!", "Hello again!")));
-        for (Greeting greeting: greetings) {
-            library.dropGreeting(greeting);
-        }
     }
 
     @Test
     public void shouldGetAStructFromRustContainingAnArrayOfStructs() {
         GreetingSet result = library.renderGreetings();
+
         List<String> greetings = new LinkedList<>();
         for (Greeting greeting: result.getGreetings()) {
             greetings.add(greeting.getText());
         }
 
         assertThat(greetings, is(asList("Hello!", "Hello again!")));
+
+        result.setAutoSynch(false);
         library.dropGreetingSet(result);
     }
 }

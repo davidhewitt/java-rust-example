@@ -34,30 +34,30 @@ public class GreetingSet extends Structure {
 
     /**
      * An array of Greetings returned from Rust.
-     * 
+     *
      * Actually, this is a pointer to a bunch of struct instances that are next
      * to each other in memory. We cast it to an array in {@link #getGreetings()}.
-     * 
+     *
      * NB: We need to explicity specify that the field is a pointer (i.e. we need
-     * to use ByReference) because, by default, JNA assumes that struct fields 
-     * are not pointers (i.e. the if you just say "Greeting", JNA assumes 
+     * to use ByReference) because, by default, JNA assumes that struct fields
+     * are not pointers (i.e. the if you just say "Greeting", JNA assumes
      * "Greeting.ByValue" here).
      */
     public Greeting.ByReference greetings;
     /**
      * The size of the array from Rust.
-     * 
+     *
      * Because we don't have any way to tell how long the array is, we've got to
      * return the length back separately. The reason we don't have to do this with
-     * strings passed back from Rust (which are actually arrays of characters) 
-     * is that native strings have a special null character at the end that JNA 
+     * strings passed back from Rust (which are actually arrays of characters)
+     * is that native strings have a special null character at the end that JNA
      * uses to tell how long each string is.
      */
     public int numberOfGreetings;
 
     /**
      * Get the greetings this struct's pointer is pointing to.
-     * 
+     *
      * Here we cast the native array into a Java list to make it more convenient
      * to work with in Java.
      */
@@ -68,12 +68,12 @@ public class GreetingSet extends Structure {
 
     /**
      * Specify the order of the struct's fields.
-     * 
+     *
      * The order here needs to match the order of the fields in the Rust code.
      * The astute will notice that the field names only match the field names in the
-     * Java class, but not the equivalent Rust struct (the Rust one's are in 
+     * Java class, but not the equivalent Rust struct (the Rust one's are in
      * snake_case, but could equally have had completely different names).
-     * This is because the fields are mapped from the Rust representation to the 
+     * This is because the fields are mapped from the Rust representation to the
      * Java one by their order (i.e. their relative location in memory), not by their names.
      */
     @Override
